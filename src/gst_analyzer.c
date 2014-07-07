@@ -165,35 +165,16 @@ new_frame_callback (GstElement * element, GstBuffer * buffer, gint frame_num,
     analyzer->complete_analyze = TRUE;
 }
 
-static GstBusSyncReply
-sync_bus_handler (GstBus * bus, GstMessage * message, gpointer user_data)
-{
-  GstAnalyzer *analyzer = (GstAnalyzer *) user_data;
-
-  if (GST_MESSAGE_TYPE (message) == GST_MESSAGE_EOS) {
-    g_printf ("<===Received EOS: All frames are analyzed====>");
-    analyzer->complete_analyze = TRUE;
-  }
-
-  return GST_BUS_PASS;
-}
-
-#if 0
 static gboolean
 bus_callback (GstBus * bus, GstMessage * message, gpointer data)
 {
   GstAnalyzer *analyzer = (GstAnalyzer *) data;
 
   if (GST_MESSAGE_TYPE (message) == GST_MESSAGE_EOS) {
-    g_message ("<===End of stream: All frames are analyzed====>");
-    g_mutex_lock (&analyzer->mutex);
+    g_printf ("<===Received EOS: All frames are analyzed====> \n");
     analyzer->complete_analyze = TRUE;
-    g_cond_signal (&analyzer->cond);
-    g_mutex_unlock (&analyzer->mutex);
     return FALSE;
-  }
-
-  else if (GST_MESSAGE_TYPE (message) == GST_MESSAGE_ERROR) {
+  } else if (GST_MESSAGE_TYPE (message) == GST_MESSAGE_ERROR) {
     GError *error = NULL;
     gst_message_parse_error (message, &error, NULL);
     g_error ("gstreamer error : %s", error->message);
@@ -202,7 +183,6 @@ bus_callback (GstBus * bus, GstMessage * message, gpointer data)
   }
   return TRUE;
 }
-#endif
 
 void
 gst_analyzer_destroy (GstAnalyzer * analyzer)
@@ -328,11 +308,7 @@ gst_analyzer_init (GstAnalyzer * analyzer, char *uri)
   gst_element_link_many (analyzer->src, analyzer->parser, analyzer->sink, NULL);
 
   bus = gst_pipeline_get_bus (GST_PIPELINE (analyzer->pipeline));
-#if 0
   analyzer->bus_watch_id = gst_bus_add_watch (bus, bus_callback, analyzer);
-#endif
-  gst_bus_set_sync_handler (bus, (GstBusSyncHandler) sync_bus_handler, analyzer,
-      NULL);
   gst_object_unref (GST_OBJECT (bus));
 
   return status;

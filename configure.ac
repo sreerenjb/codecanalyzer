@@ -29,14 +29,14 @@ m4_define([codecanalyzer_build_version], [0])
 dnl Check for glib
 PKG_CHECK_MODULES([GLIB], [glib-2.0 >= 2.32.0])
 PKG_CHECK_MODULES([GMODULE_EXPORT], [gmodule-2.0 >= 2.32.0])
-PKG_CHECK_MODULES([GTK], [gtk+-3.0 >= 3.8.6])
+PKG_CHECK_MODULES([GTK], [gtk+-3.0 >= 3.4.2])
 PKG_CHECK_MODULES([GST], [gstreamer-1.0 >= 1.3.1])
 PKG_CHECK_MODULES([GST_BASE], [gstreamer-base-1.0 >= 1.3.1])
 PKG_CHECK_MODULES([GST_PLUGINS_BASE], [gstreamer-plugins-base-1.0 >= 1.3.1])
 PKG_CHECK_MODULES([GST_VIDEO], [gstreamer-video-1.0 >= 1.3.1])
 PKG_CHECK_MODULES([GST_PBUTILS], [gstreamer-pbutils-1.0 >= 1.3.1])
 PKG_CHECK_MODULES([GST_CODEC_PARSERS], [gstreamer-plugins-bad-1.0 >= 1.3.1])
-PKG_CHECK_MODULES([LIBXML2], [libxml-2.0 >= 2.8.0])
+PKG_CHECK_MODULES([LIBXML2], [libxml-2.0 >= 2.7.8])
 
 GST_ALL_LDFLAGS="-no-undefined"
 AC_SUBST(GST_ALL_LDFLAGS)

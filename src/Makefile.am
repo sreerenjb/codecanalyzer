@@ -21,7 +21,7 @@ codecanalyzer_CFLAGS = \
 	-I$(top_srcdir)/src/plugins/gst/analyzersink \
 	-DDATADIR=\"$(datadir)\" \
 	$(NULL)
-	
+
 codecanalyzer_LDADD = \
 	$(GLIB_LIBS)   			\
 	$(GMODULE_EXPORT_LIBS)		\
@@ -31,7 +31,7 @@ codecanalyzer_LDADD = \
 	$(top_builddir)/src/plugins/gst/analyzersink/libcodecanalyzer-gst-analyzersink.la \
 	$(LIBXML2_LIBS)			\
 	$(NULL)
-	
+
 codecanalyzer_LDFLAGS =           \
         $(GST_ALL_LDFLAGS)        \
         $(NULL)

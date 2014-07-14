@@ -13,7 +13,7 @@
  * more details.
  *
  * You should have received a copy of the GNU Lesser General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc., 
+ * this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin St - Fifth Floor, Boston, MA 02110-1301 USA.
  *
  */
@@ -33,7 +33,7 @@ typedef struct {
   GstMpegVideoQuantMatrixExt     *quantext;
 }Mpeg2Headers;
 
-gboolean 
+gboolean
 analyzer_create_mpeg2video_frame_xml (GstMpegVideoMeta *mpeg_meta,
                                       gchar *location,
 				      gint frame_num,

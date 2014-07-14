@@ -13,9 +13,17 @@
  * more details.
  *
  * You should have received a copy of the GNU Lesser General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc., 
+ * this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin St - Fifth Floor, Boston, MA 02110-1301 USA.
  *
+ */
+/* SECTION: gst-analyzer
+ * gst-analyzer is the back-end code of codecanalyzer
+ * which is for activating the whole gstreamer pipeline.
+ * The usual pipeline contains three gstreamer elements,
+ * a src(filesrc), parser(any video parser element supporing
+ * by the codecanalyzer and upstream gstreamer) and an
+ * analyzersink which is residing in plugins/gst/analzyersink.
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -279,7 +287,7 @@ gst_analyzer_init (GstAnalyzer * analyzer, char *uri)
         break;
       default:
         status = GST_ANALYZER_STATUS_CODEC_NOT_SUPPORTED;
-	goto error;
+        goto error;
         break;
     }
   }

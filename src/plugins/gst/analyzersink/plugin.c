@@ -13,7 +13,7 @@
  * more details.
  *
  * You should have received a copy of the GNU Lesser General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc., 
+ * this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin St - Fifth Floor, Boston, MA 02110-1301 USA.
  *
  */
@@ -39,4 +39,3 @@ GST_PLUGIN_DEFINE (GST_VERSION_MAJOR,
     analyzersink,
     "sink element to dump parsed information to the xml",
     plugin_init, VERSION, "LGPL", PACKAGE_NAME, PACKAGE_URL);
-

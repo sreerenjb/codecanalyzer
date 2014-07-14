@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2013, Intel Corporation.
  * Author: Sreerenj Balachandran <sreerenj.balachandran@intel.com>
- * 
+ *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
  * License as published by the Free Software Foundation; either
@@ -13,9 +13,15 @@
  * more details.
  *
  * You should have received a copy of the GNU Lesser General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc., 
+ * this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin St - Fifth Floor, Boston, MA 02110-1301 USA.
  *
+ */
+/**
+ * CodecAnalyzer is an analyzer for doing in-depth analysis
+ * on compressed media which is built on top of gstreamer, gtk+ and
+ * libxml2. It is capable of parsing all the syntax elements
+ * from an elementary video stream.
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -147,7 +153,7 @@ fill_tree_store (gpointer data, gpointer user_data)
   AnalyzerNode *node;
   GtkTreeStore *treestore;
   GtkTreeIter toplevel, child;
-  gchar buf[64];
+  gchar *buf;
 
   node = (AnalyzerNode *) data;
   treestore = (GtkTreeStore *) user_data;
@@ -157,8 +163,9 @@ fill_tree_store (gpointer data, gpointer user_data)
   if (!node->is_matrix)
     gtk_tree_store_set (treestore, &toplevel, COLUMN_VALUE, node->value, -1);
   else {
-    sprintf (buf, "[%s][%s] :click description", node->rows, node->columns);
+    buf = g_strdup_printf ("[%s][%s] :click description", node->rows, node->columns);
     gtk_tree_store_set (treestore, &toplevel, COLUMN_VALUE, buf, -1);
+    g_free (buf);
   }
   gtk_tree_store_set (treestore, &toplevel, COLUMN_NBITS, node->nbits, -1);
 
@@ -375,23 +382,26 @@ callback_frame_thumbnail_press (GtkWidget * event_box,
     GdkEventButton * event, gpointer user_data)
 {
   GtkWidget *label;
-  char file_name[1024];
-  char *frame_name_markup;
+  gchar *file_name;
+  gchar *name;
+  gchar *frame_name_markup;
   gint frame_num;
 
   frame_num = (gint) user_data;
 
-  sprintf (file_name, "%s/xml/%s-%d.xml", ui->analyzer_home, ui->codec_name,
-      frame_num);
+  name = g_strdup_printf ("%s-%d.xml",ui->codec_name, frame_num);
+  file_name = g_build_filename (ui->analyzer_home, "xml", name, NULL);
   if (ui->current_xml)
     g_free (ui->current_xml);
-  ui->current_xml = g_strdup (file_name);
+  g_free (name);
+  ui->current_xml = file_name;
 
-  sprintf (file_name, "%s/hex/%s-%d.hex", ui->analyzer_home, ui->codec_name,
-      frame_num);
+  name = g_strdup_printf ("%s-%d.hex",ui->codec_name, frame_num);
+  file_name = g_build_filename (ui->analyzer_home, "hex", name, NULL);
   if (ui->current_hex)
     g_free (ui->current_hex);
-  ui->current_hex = g_strdup (file_name);
+  g_free(name);
+  ui->current_hex = file_name;
 
   g_signal_connect (G_OBJECT (ui->header_button), "button-press-event",
       G_CALLBACK (callback_button_box_click),
@@ -439,7 +449,7 @@ create_image (int frame_num)
   gtk_container_add (GTK_CONTAINER (event_box), image);
 
   g_signal_connect (G_OBJECT (event_box), "button_press_event",
-      G_CALLBACK (callback_frame_thumbnail_press), (gpointer) frame_num);
+      G_CALLBACK (callback_frame_thumbnail_press), (gpointer)frame_num);
   return event_box;
 }
 
@@ -497,7 +507,6 @@ analyzer_ui_destroy ()
 void
 callback_main_window_destroy (GtkWidget * widget, gpointer user_data)
 {
-  g_message ("main_window_des");
   if (gst_analyzer)
     gst_analyzer_destroy (gst_analyzer);
 
@@ -801,7 +810,8 @@ menu_about_callback ()
   char *file_name;
   char *authors[] =
       { "Sreerenj Balachandran", "&lt; sreerenj.balachandran@intel.com &gt;",
-        NULL };
+    NULL
+  };
 
   file_name = g_build_filename (DATADIR, "codecanalyzer", "pixmaps",
       "codecanalyzer-logo.png", NULL);
@@ -947,29 +957,40 @@ analyzer_ui_init ()
 static gboolean
 analyzer_create_dirs ()
 {
-  const char *home_dir;
-  char analyzer_home[256];
-  char xml_files_path[256];
-  char hex_files_path[256];
+  const gchar *user_cache_dir;
+  gchar *xml_files_path;
+  gchar *hex_files_path;
+  gboolean ret = TRUE;
 
-  home_dir = g_get_home_dir ();
-  if (!home_dir)
-    return FALSE;
+  user_cache_dir = g_get_user_cache_dir();
+  if (!user_cache_dir) {
+    ret = FALSE;
+    goto done;
+  }
 
-  sprintf (analyzer_home, "%s/tmp/codecanalyzer", home_dir);
-  sprintf (xml_files_path, "%s/xml", analyzer_home);
-  sprintf (hex_files_path, "%s/hex", analyzer_home);
+  ui->analyzer_home = g_build_filename (user_cache_dir, "codecanalyzer", NULL);
 
-  if (g_mkdir_with_parents (xml_files_path, 0777) < 0)
-    return FALSE;
+  xml_files_path = g_build_filename (ui->analyzer_home, "xml", NULL);
+  if (g_mkdir_with_parents (xml_files_path, 0777) < 0){
+    ret = FALSE;
+    goto done;
+  }
 
-  if (g_mkdir_with_parents (hex_files_path, 0777) < 0)
-    return FALSE;
-
-  ui->analyzer_home = g_strdup (analyzer_home);
+  hex_files_path = g_build_filename (ui->analyzer_home, "hex", NULL);
+  if (g_mkdir_with_parents (hex_files_path, 0777) < 0) {
+    ret = FALSE;
+    goto done;
+  }
 
   g_debug ("Analyzer_Home %s", ui->analyzer_home);
-  return TRUE;
+
+done:
+  if (xml_files_path)
+    g_free (xml_files_path);
+  if (hex_files_path)
+    g_free (hex_files_path);
+
+  return ret;
 }
 
 int
@@ -1026,6 +1047,6 @@ main (int argc, char *argv[])
   gtk_main ();
 
 done:
-  g_message ("Closing Codecanalyzer....");
+  g_printf ("Closing Codecanalyzer....\n");
   return 0;
 }

@@ -13,7 +13,7 @@
  * more details.
  *
  * You should have received a copy of the GNU Lesser General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc., 
+ * this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin St - Fifth Floor, Boston, MA 02110-1301 USA.
  *
  */
@@ -158,7 +158,7 @@ error:
 }
 
 static gboolean
-create_gop_hdr_xml (xmlTextWriterPtr writer, GstMpegVideoGop *gop_hdr)
+create_gop_hdr_xml (xmlTextWriterPtr writer, GstMpegVideoGop * gop_hdr)
 {
   ANALYZER_XML_ELEMENT_START (writer, "GopHdr");
 
@@ -324,6 +324,7 @@ error:
   }
   return TRUE;
 }
+
 #if 0
 static gboolean
 create_slice_hdr_xml (xmlTextWriterPtr writer,
@@ -391,8 +392,8 @@ analyzer_create_mpeg2video_frame_xml (GstMpegVideoMeta * mpeg_meta,
   xmlDocPtr doc;
   xmlBufferPtr buf;
   xmlChar *tmp;
-  char xml_dir[1024];
-  char file_name[1024];
+  gchar *file_name;
+  gchar *name;
   int fd, i;
   GstMpegVideoSequenceHdr *sequencehdr = NULL;
   GstMpegVideoSequenceExt *sequenceext = NULL;
@@ -422,7 +423,7 @@ analyzer_create_mpeg2video_frame_xml (GstMpegVideoMeta * mpeg_meta,
 
   if (xmlTextWriterWriteComment (writer,
           (xmlChar *) "Data parssed from the mpeg2 stream") < 0) {
-    printf ("Error: Failed to write the comment \n");
+    g_error ("Error: Failed to write the comment \n");
     return FALSE;
   }
 
@@ -499,7 +500,6 @@ analyzer_create_mpeg2video_frame_xml (GstMpegVideoMeta * mpeg_meta,
     if (!create_quant_ext_xml (writer, quantext))
       return FALSE;
   }
-
 #if 0
   if (mpeg_meta->gophdr) {
     if (!create_gop_hdr_xml (writer, mpeg_meta->gophdr))
@@ -515,7 +515,6 @@ analyzer_create_mpeg2video_frame_xml (GstMpegVideoMeta * mpeg_meta,
     if (!create_pic_ext_xml (writer, mpeg_meta->picext))
       return FALSE;
   }
-
 #if 0
   if (mpeg_meta->slice_info_array) {
     for (i = 0; i < mpeg_meta->slice_info_array->len; i++) {
@@ -524,7 +523,7 @@ analyzer_create_mpeg2video_frame_xml (GstMpegVideoMeta * mpeg_meta,
           &g_array_index (mpeg_meta->slice_info_array,
           GstMpegVideoMetaSliceInfo, i);
       if (!slice_info) {
-        printf ("Failed to get slice details from meta.. \n");
+        g_error ("Failed to get slice details from meta.. \n");
         return FALSE;
       }
       if (!create_slice_hdr_xml (writer, slice_info, i))
@@ -533,27 +532,28 @@ analyzer_create_mpeg2video_frame_xml (GstMpegVideoMeta * mpeg_meta,
   }
 #endif
   if (xmlTextWriterEndElement (writer) < 0) {
-    printf ("Error: Failed to end mpeg2 root element \n");
+    g_error ("Error: Failed to end mpeg2 root element \n");
     return FALSE;
   }
 
   if (xmlTextWriterEndDocument (writer) < 0) {
-    printf ("Error: Ending document \n");
+    g_error ("Error: Ending document \n");
     return FALSE;
   }
 
   xmlFreeTextWriter (writer);
 
   /* create a new xml file for each frame */
-  sprintf (xml_dir, "%s%s", location, "/xml");
-  if (g_mkdir_with_parents (xml_dir, 0777) < 0) {
-    GST_ERROR ("Faild to create xml dir %s", xml_dir);
-    return FALSE;
-  }
-  sprintf (file_name, "%s/%s-%d%s", xml_dir, "mpeg2", frame_num, ".xml");
+  name = g_strdup_printf ("mpeg2-%d.xml", frame_num);
+  file_name = g_build_filename (location, "xml", name, NULL);
   GST_LOG ("Created a New xml file %s to dump the parsed info", file_name);
 
   xmlSaveFormatFile (file_name, doc, 1);
+
+  if (name)
+    g_free (name);
+  if (file_name)
+    g_free (file_name);
 
   return TRUE;
 }

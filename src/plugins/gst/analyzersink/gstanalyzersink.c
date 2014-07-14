@@ -13,11 +13,14 @@
  * more details.
  *
  * You should have received a copy of the GNU Lesser General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc., 
+ * this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin St - Fifth Floor, Boston, MA 02110-1301 USA.
  *
  */
-
+/*SECTION: analyzersink
+ * A sink element to generate xml and hex files for each
+ * video frame providing by the upstream parser element
+ */
 #ifdef HAVE_CONFIG_H
 #  include "config.h"
 #endif
@@ -139,6 +142,7 @@ gst_analyzer_sink_init (GstAnalyzerSink * analyzersink)
   analyzersink->codec_type = GST_ANALYZER_CODEC_UNKNOWN;
   analyzersink->frame_num = 0;
   analyzersink->location = NULL;
+  /* XXX: Add a generic structure to handle different codecs */
   analyzersink->mpeg2_hdrs = g_slice_new0 (Mpeg2Headers);
   gst_base_sink_set_sync (GST_BASE_SINK (analyzersink), DEFAULT_SYNC);
 }
@@ -253,20 +257,20 @@ gst_analyzer_sink_dump_mem (GstAnalyzerSink * sink, const guchar * mem,
 {
   GString *string;
   FILE *fd;
-  char hex_dir[512];
-  char file_name[1024];
+  gchar *name;
+  gchar *file_name;
   guint i = 0, j = 0;
 
   GST_DEBUG ("dump frame content with size = %d", size);
 
+  /* XXX: Add a generic structure to handle different codec name string
+   * For now analyzersink can only handle mpeg2meta:*/
+
   /* create a new hex file for each frame */
-  sprintf (hex_dir, "%s%s", sink->location, "/hex");
-  if (g_mkdir_with_parents (hex_dir, 0777) < 0) {
-    GST_ERROR ("Faild to create hex dir %s", hex_dir);
-    return FALSE;
-  }
-  sprintf (file_name, "%s/%s-%d%s", hex_dir, "mpeg2", sink->frame_num, ".hex");
+  name = g_strdup_printf ("mpeg2-%d.hex", sink->frame_num);
+  file_name = g_build_filename (sink->location, "hex", name, NULL);
   GST_LOG ("Created a New hex file %s to dump the content", file_name);
+  free (name);
 
   fd = fopen (file_name, "w");
   if (fd == NULL)
@@ -287,6 +291,8 @@ gst_analyzer_sink_dump_mem (GstAnalyzerSink * sink, const guchar * mem,
     }
   }
   g_string_free (string, TRUE);
+  if (file_name)
+    g_free (file_name);
 
   fclose (fd);
   return TRUE;

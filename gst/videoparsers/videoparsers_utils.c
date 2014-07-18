@@ -29,7 +29,7 @@ plugin_init (GstPlugin * plugin)
 {
   gboolean ret = FALSE;
 
-  ret |= gst_element_register (plugin, "mpegvideoanalyze",
+  ret |= gst_element_register (plugin, "videoparse_mpeg2",
       GST_RANK_PRIMARY + 1, GST_TYPE_MPEGVIDEO_PARSE);
 
   return ret;
@@ -40,13 +40,13 @@ videoparsers_register_static()
 {
   return gst_plugin_register_static (GST_VERSION_MAJOR,
                                      GST_VERSION_MINOR,
-                                     "analzservideoparsers",
+                                     "analyzervideoparsers",
                                      "Analyser video parser plugin",
                                      plugin_init,
                                      VERSION,
                                      "LGPL",
-                                     "streamspector-gst-parselib",
-                                     "streamspector",
-                                     "http://github.com/Streamspector/streamspector");
+                                     "codecanalyzer-video-parsers",
+                                     "codecanalyzer",
+                                     "http://github.com/sreerenjb/codecanalyzer");
 }
 

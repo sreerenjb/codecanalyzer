@@ -31,6 +31,7 @@
 
 #include "gst_analyzer.h"
 #include <analyzer_utils.h>
+#include <videoparsers_utils.h>
 
 typedef struct
 {
@@ -68,7 +69,7 @@ typedef struct
 
 static const CodecInfo codecs_info[] = {
 
-  {"MPEG-2 Video", "mpeg2", GST_ANALYZER_CODEC_MPEG2_VIDEO, "mpegvideoparse"},
+  {"MPEG-2 Video", "mpeg2", GST_ANALYZER_CODEC_MPEG2_VIDEO, "videoparse_mpeg2"},
   {"H.264", "h264", GST_ANALYZER_CODEC_H264, "h264parse"},
   {"H.265", "h265", GST_ANALYZER_CODEC_H265, "h265parse"},
   {"UNKNOWN", "unknown", GST_ANALYZER_CODEC_UNKNOWN, NULL}
@@ -261,7 +262,7 @@ gst_analyzer_init (GstAnalyzer * analyzer, char *uri)
   if (!gst_is_initialized ())
     gst_init (NULL, NULL);
 
-  if (!analyzer_sink_register_static ()) {
+  if (!videoparsers_register_static () || !analyzer_sink_register_static ()) {
     g_error ("Failed to register static plugins.... \n");
     status = GST_ANALYZER_STATUS_CODEC_PARSER_MISSING;
     goto error;

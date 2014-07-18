@@ -39,4 +39,4 @@ GST_PLUGIN_DEFINE (GST_VERSION_MAJOR,
     GST_VERSION_MINOR,
     videoparsersbad,
     "videoparsers",
-    plugin_init, VERSION, "LGPL", "codecanalyzer-parsers", "https://github.com/sreerenjb/codecanalyzer");
+    plugin_init, VERSION, "LGPL", PACKAGE_NAME, PACKAGE_URL);

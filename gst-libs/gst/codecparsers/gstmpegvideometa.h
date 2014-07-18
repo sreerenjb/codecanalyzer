@@ -31,11 +31,24 @@
 G_BEGIN_DECLS
 
 typedef struct _GstMpegVideoMeta GstMpegVideoMeta;
+typedef struct _GstMpegVideoMetaSliceInfo GstMpegVideoMetaSliceInfo;
 
 GType gst_mpeg_video_meta_api_get_type (void);
 #define GST_MPEG_VIDEO_META_API_TYPE  (gst_mpeg_video_meta_api_get_type())
 #define GST_MPEG_VIDEO_META_INFO  (gst_mpeg_video_meta_get_info())
 const GstMetaInfo * gst_mpeg_video_meta_get_info (void);
+
+/**
+ * GstMpegVideoMetaSliceInfo:
+ * @slice_hdr: the #GstMpegVideoSliceHdr
+ * @slice_offset: the offset of the slice with in the buffer (including the slice start code)
+ * @slice_size: the size of the slice starting from slice_offset (including the slice start code)
+ */
+struct _GstMpegVideoMetaSliceInfo {
+  GstMpegVideoSliceHdr slice_hdr;
+  guint slice_offset;
+  gsize slice_size;
+};
 
 /**
  * GstMpegVideoMeta:
@@ -47,6 +60,9 @@ const GstMetaInfo * gst_mpeg_video_meta_get_info (void);
  * @pichdr: the #GstMpegVideoPictureHdr if present in the buffer.
  * @picext: the #GstMpegVideoPictureExt if present in the buffer.
  * @quantext: the #GstMpegVideoQuantMatrixExt if present in the buffer
+ * @num_slices: number of slices in a frame
+ * @slice_offset: offset to the first slice in the frame
+ * @slice_info_array: an array of #GstMpegVideoMetaSliceInfo
  *
  * Extra buffer metadata describing the contents of a MPEG1/2 Video frame
  *
@@ -70,6 +86,7 @@ struct _GstMpegVideoMeta {
 
   guint num_slices;
   gsize slice_offset;
+  GArray *slice_info_array;
 };
 
 
@@ -82,7 +99,10 @@ gst_buffer_add_mpeg_video_meta (GstBuffer * buffer,
                                 const GstMpegVideoSequenceDisplayExt *disp_ext,
                                 const GstMpegVideoPictureHdr *pic_hdr,
                                 const GstMpegVideoPictureExt *pic_ext,
-                                const GstMpegVideoQuantMatrixExt *quant_ext);
+                                const GstMpegVideoQuantMatrixExt *quant_ext,
+                                GArray *slice_info_array
+                               );
+
 
 G_END_DECLS
 

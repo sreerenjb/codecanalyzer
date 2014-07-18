@@ -37,6 +37,7 @@ gst_mpeg_video_meta_init (GstMpegVideoMeta * mpeg_video_meta,
   mpeg_video_meta->pichdr = NULL;
   mpeg_video_meta->picext = NULL;
   mpeg_video_meta->quantext = NULL;
+  mpeg_video_meta->slice_info_array = NULL;
 
   return TRUE;
 }
@@ -58,6 +59,10 @@ gst_mpeg_video_meta_free (GstMpegVideoMeta * mpeg_video_meta,
     g_slice_free (GstMpegVideoPictureExt, mpeg_video_meta->picext);
   if (mpeg_video_meta->quantext)
     g_slice_free (GstMpegVideoQuantMatrixExt, mpeg_video_meta->quantext);
+  if (mpeg_video_meta->slice_info_array) {
+    g_array_unref (mpeg_video_meta->slice_info_array);
+    mpeg_video_meta->slice_info_array = NULL;
+  }
 }
 
 GType
@@ -96,6 +101,13 @@ gst_mpeg_video_meta_get_info (void)
 /**
  * gst_buffer_add_mpeg_video_meta:
  * @buffer: a #GstBuffer
+ * @seq_hdr: a #GstMpegVideoSequenceHdr
+ * @seq_ext: a #GstMpegVideoSequenceExt
+ * @disp_ext: a #GstMpegVideoSequenceDisplayExt
+ * @pic_hdr: a #GstMpegVideoPictureHdr
+ * @pic_ext: a #GstMpegVideoPictureExt
+ * @quant_ext: a #GstMpegVideoQuantMatrixExt
+ * @slice_info_array: an array of #GstMpegVideoMetaSliceInfo
  *
  * Creates and adds a #GstMpegVideoMeta to a @buffer.
  *
@@ -112,7 +124,7 @@ gst_buffer_add_mpeg_video_meta (GstBuffer * buffer,
     const GstMpegVideoSequenceDisplayExt * disp_ext,
     const GstMpegVideoPictureHdr * pic_hdr,
     const GstMpegVideoPictureExt * pic_ext,
-    const GstMpegVideoQuantMatrixExt * quant_ext)
+    const GstMpegVideoQuantMatrixExt * quant_ext, GArray * slice_info_array)
 {
   GstMpegVideoMeta *mpeg_video_meta;
 
@@ -139,6 +151,8 @@ gst_buffer_add_mpeg_video_meta (GstBuffer * buffer,
   if (quant_ext)
     mpeg_video_meta->quantext =
         g_slice_dup (GstMpegVideoQuantMatrixExt, quant_ext);
+  if (slice_info_array)
+    mpeg_video_meta->slice_info_array = g_array_ref (slice_info_array);
 
   return mpeg_video_meta;
 }

@@ -6,6 +6,8 @@ noinst_HEADERS = gstanalyzersink.h mpeg_xml.h xml_utils.h analyzer_utils.h
 
 libcodecanalyzer_gst_analyzersink_cflags =                          \
         -DGST_USE_UNSTABLE_API                           \
+        -I$(top_srcdir)/gst-libs                         \
+        -I$(top_builddir)/gst-libs                       \
         $(GST_BASE_CFLAGS)                               \
 	$(GST_VIDEO_CFLAGS)                              \
         $(GST_CFLAGS)                                    \
@@ -19,6 +21,7 @@ libcodecanalyzer_gst_analyzersink_libs =                   \
         $(GST_VIDEO_LIBS)                       \
         $(GST_CODEC_PARSERS_LIBS)               \
         $(LIBXML2_LIBS)                         \
+        $(top_builddir)/gst-libs/gst/codecparsers/libgstcodecanalyzer-codecparsers.la \
         $(NULL)
 
 libcodecanalyzer_gst_analyzersink_la_SOURCES =  \

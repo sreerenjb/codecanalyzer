@@ -17,6 +17,8 @@ codecanalyzer_CFLAGS = \
 	$(GST_CFLAGS)			\
 	$(GST_PBUTILS_CFLAGS)		\
 	$(LIBXML2_CFLAGS)		\
+	-I$(top_builddir)/gst/videoparsers \
+	-I$(top_srcdir)/gst/videoparsers \
 	-I$(top_builddir)/src/plugins/gst/analyzersink \
 	-I$(top_srcdir)/src/plugins/gst/analyzersink \
 	-DDATADIR=\"$(datadir)\" \
@@ -28,6 +30,7 @@ codecanalyzer_LDADD = \
 	$(GTK_LIBS)			\
 	$(GST_LIBS)			\
 	$(GST_PBUTILS_LIBS)		\
+	$(top_builddir)/gst/videoparsers/libgstcodecanalyzer-videoparsers.la \
 	$(top_builddir)/src/plugins/gst/analyzersink/libcodecanalyzer-gst-analyzersink.la \
 	$(LIBXML2_LIBS)			\
 	$(NULL)

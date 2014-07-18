@@ -63,6 +63,11 @@ AC_SUBST(LIBXML2_CFLAGS)
 AC_SUBST(LIBXML2_LIBS)
 
 AC_CONFIG_FILES([Makefile
+	gst-libs/Makefile
+	gst-libs/gst/Makefile
+	gst-libs/gst/codecparsers/Makefile
+	gst/Makefile
+	gst/videoparsers/Makefile
 	src/Makefile
 	src/plugins/Makefile
 	src/plugins/gst/Makefile

@@ -66,10 +66,12 @@ struct _GstMpegvParse {
   gint seq_size;
   gint pic_offset;
   guint slice_count;
+  guint slice_offset_start;
   guint slice_offset;
   gboolean update_caps;
   gboolean send_codec_tag;
   gboolean send_mpeg_meta;
+  gboolean send_slice_meta;
 
   GstBuffer *config;
   guint8 profile;
@@ -80,6 +82,7 @@ struct _GstMpegvParse {
   GstMpegVideoPictureHdr pichdr;
   GstMpegVideoPictureExt picext;
   GstMpegVideoQuantMatrixExt quantmatrext;
+  GArray *slice_info_array;
 
   gboolean seqhdr_updated;
   gboolean seqext_updated;

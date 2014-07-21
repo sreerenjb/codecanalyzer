@@ -230,7 +230,7 @@ gst_mpegv_parse_reset (GstMpegvParse * mpvparse)
   mpvparse->update_caps = TRUE;
   mpvparse->send_codec_tag = TRUE;
   mpvparse->send_mpeg_meta = TRUE;
-  mpvparse->send_slice_meta = TRUE;
+  mpvparse->send_slice_meta = FALSE;
 
   gst_buffer_replace (&mpvparse->config, NULL);
   memset (&mpvparse->sequencehdr, 0, sizeof (mpvparse->sequencehdr));
@@ -267,8 +267,8 @@ gst_mpegv_parse_sink_query (GstBaseParse * parse, GstQuery * query)
       gboolean send_slice_meta;
 
       gst_query_parse_nth_allocation_meta (query, index, &params);
-      if (params && gst_structure_has_name (params, "GstMpegVideoSliceMeta")
-          && gst_structure_get_boolean (params, "need-slice-parsing",
+      if (params && gst_structure_has_name (params, "Gst.Meta.MpegVideo")
+          && gst_structure_get_boolean (params, "need-slice-header",
               &send_slice_meta))
         mpvparse->send_slice_meta = send_slice_meta;
 

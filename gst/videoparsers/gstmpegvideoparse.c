@@ -36,13 +36,18 @@
 GST_DEBUG_CATEGORY (mpegv_parse_debug);
 #define GST_CAT_DEFAULT mpegv_parse_debug
 
+#define GST_MPEG_VIDEO_CAPS_MAKE_WITH_FEATURES(features)                \
+    "video/mpeg(" features "), "                                        \
+    "mpegversion = (int) [1, 2],"                                       \
+    "parsed = (boolean) true,"                                          \
+    "systemstream = (boolean) false"
+
 static GstStaticPadTemplate src_template =
-GST_STATIC_PAD_TEMPLATE ("src", GST_PAD_SRC,
+    GST_STATIC_PAD_TEMPLATE ("src", GST_PAD_SRC,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS ("video/mpeg, "
-        "mpegversion = (int) [1, 2], "
-        "parsed = (boolean) true, " "systemstream = (boolean) false")
-    );
+    GST_STATIC_CAPS (GST_MPEG_VIDEO_CAPS_MAKE_WITH_FEATURES ("") ";"
+        GST_MPEG_VIDEO_CAPS_MAKE_WITH_FEATURES
+        (GST_CAPS_FEATURE_MPEG_VIDEO_META)));
 
 static GstStaticPadTemplate sink_template =
 GST_STATIC_PAD_TEMPLATE ("sink", GST_PAD_SINK,
@@ -229,7 +234,7 @@ gst_mpegv_parse_reset (GstMpegvParse * mpvparse)
   mpvparse->profile = 0;
   mpvparse->update_caps = TRUE;
   mpvparse->send_codec_tag = TRUE;
-  mpvparse->send_mpeg_meta = TRUE;
+  mpvparse->send_mpeg_meta = FALSE;
   mpvparse->send_slice_meta = FALSE;
 
   gst_buffer_replace (&mpvparse->config, NULL);
@@ -283,6 +288,34 @@ gst_mpegv_parse_sink_query (GstBaseParse * parse, GstQuery * query)
   return res;
 }
 
+static void
+gst_mpegv_negotiate_codec_meta (GstMpegvParse * mpvparse)
+{
+  GstCaps *caps = NULL;
+  GstCapsFeatures *feature = NULL, *feature_meta;
+
+  caps = gst_pad_get_allowed_caps (GST_BASE_PARSE_SRC_PAD (mpvparse));
+  GST_DEBUG_OBJECT (mpvparse, "allowed caps: %" GST_PTR_FORMAT, caps);
+  /* concentrate on leading structure, since decodebin parser
+   * capsfilter always includes parser template caps */
+  if (caps) {
+    caps = gst_caps_truncate (caps);
+    GST_DEBUG_OBJECT (mpvparse, "negotiating with caps: %" GST_PTR_FORMAT,
+        caps);
+    feature = gst_caps_get_features ((const GstCaps *) caps, 0);
+    feature_meta =
+        gst_caps_features_new (GST_CAPS_FEATURE_MPEG_VIDEO_META, NULL);
+    if (feature && gst_caps_features_is_equal (feature, feature_meta)) {
+      mpvparse->send_mpeg_meta = TRUE;
+      GST_DEBUG_OBJECT (mpvparse,
+          "Downstream can handle GstMpegVideo GstMeta : %d",
+          mpvparse->send_mpeg_meta);
+    }
+    gst_caps_features_free (feature_meta);
+    gst_caps_unref (caps);
+  }
+}
+
 static gboolean
 gst_mpegv_parse_start (GstBaseParse * parse)
 {
@@ -293,6 +326,9 @@ gst_mpegv_parse_start (GstBaseParse * parse)
   gst_mpegv_parse_reset (mpvparse);
   /* at least this much for a valid frame */
   gst_base_parse_set_min_frame_size (parse, 6);
+
+  /* negotiate the requirement of GstMpegVideoMeta */
+  gst_mpegv_negotiate_codec_meta (mpvparse);
 
   return TRUE;
 }
@@ -831,6 +867,7 @@ gst_mpegv_parse_update_src_caps (GstMpegvParse * mpvparse)
 {
   GstCaps *caps = NULL;
   GstStructure *s = NULL;
+  GstCapsFeatures *feature;
 
   /* only update if no src caps yet or explicitly triggered */
   if (G_LIKELY (gst_pad_has_current_caps (GST_BASE_PARSE_SRC_PAD (mpvparse)) &&
@@ -980,6 +1017,11 @@ gst_mpegv_parse_update_src_caps (GstMpegvParse * mpvparse)
     gst_caps_set_simple (caps, "interlace-mode",
         G_TYPE_STRING,
         (mpvparse->sequenceext.progressive ? "progressive" : "mixed"), NULL);
+  }
+
+  if (mpvparse->send_mpeg_meta) {
+    feature = gst_caps_features_new (GST_CAPS_FEATURE_MPEG_VIDEO_META, NULL);
+    gst_caps_set_features (caps, 0, feature);
   }
 
   gst_pad_set_caps (GST_BASE_PARSE_SRC_PAD (mpvparse), caps);

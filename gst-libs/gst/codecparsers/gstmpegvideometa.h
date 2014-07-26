@@ -38,6 +38,8 @@ GType gst_mpeg_video_meta_api_get_type (void);
 #define GST_MPEG_VIDEO_META_INFO  (gst_mpeg_video_meta_get_info())
 const GstMetaInfo * gst_mpeg_video_meta_get_info (void);
 
+#define GST_CAPS_FEATURE_MPEG_VIDEO_META "meta:GstMpegVideoMeta"
+
 /**
  * GstMpegVideoMetaSliceInfo:
  * @slice_hdr: the #GstMpegVideoSliceHdr

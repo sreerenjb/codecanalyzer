@@ -77,6 +77,8 @@ static GstFlowReturn gst_analyzer_sink_render (GstBaseSink * bsink,
     GstBuffer * buffer);
 static gboolean gst_analyzer_sink_event (GstBaseSink * bsink, GstEvent * event);
 static gboolean gst_analyzer_sink_query (GstBaseSink * bsink, GstQuery * query);
+static gboolean gst_analyzer_sink_propose_allocation (GstBaseSink * base_sink,
+    GstQuery * query);
 
 static guint gst_analyzer_sink_signals[LAST_SIGNAL] = { 0 };
 
@@ -137,6 +139,7 @@ gst_analyzer_sink_class_init (GstAnalyzerSinkClass * klass)
   gstbase_sink_class->event = GST_DEBUG_FUNCPTR (gst_analyzer_sink_event);
   gstbase_sink_class->render = GST_DEBUG_FUNCPTR (gst_analyzer_sink_render);
   gstbase_sink_class->query = GST_DEBUG_FUNCPTR (gst_analyzer_sink_query);
+  gstbase_sink_class->propose_allocation = gst_analyzer_sink_propose_allocation;
 }
 
 static void
@@ -408,6 +411,23 @@ gst_analyzer_sink_query (GstBaseSink * bsink, GstQuery * query)
   }
 
   return ret;
+}
+
+static gboolean
+gst_analyzer_sink_propose_allocation (GstBaseSink * base_sink, GstQuery * query)
+{
+  GstStructure *param;
+  GstAnalyzerSink *analyzersink = GST_ANALYZER_SINK (base_sink);
+
+  /* Fixme: differentiate the codecs based on negotiated caps */
+  /* request mpeg2 slice header parsing from upstream */
+  param =
+      gst_structure_new ("Gst.Meta.MpegVideo", "need-slice-header",
+      G_TYPE_BOOLEAN, TRUE, NULL);
+  gst_query_add_allocation_meta (query, GST_MPEG_VIDEO_META_API_TYPE, param);
+  gst_structure_free (param);
+
+  return TRUE;
 }
 
 static GstStateChangeReturn

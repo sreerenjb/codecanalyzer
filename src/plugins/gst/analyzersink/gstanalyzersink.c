@@ -29,10 +29,15 @@
 
 #include <string.h>
 
+#define GST_MPEG_VIDEO_CAPS_MAKE_WITH_FEATURES(features)                \
+    "video/mpeg(" features "), "                                        \
+    "mpegversion = (int) 2"
+
 static GstStaticPadTemplate sinktemplate = GST_STATIC_PAD_TEMPLATE ("sink",
     GST_PAD_SINK,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS ("video/mpeg, mpegversion=2" ";"
+    GST_STATIC_CAPS (GST_MPEG_VIDEO_CAPS_MAKE_WITH_FEATURES
+        (GST_CAPS_FEATURE_MPEG_VIDEO_META) ";"
         "video/x-h264" ";" "video/x-h265"));
 
 /* AnalyzerSink signals and args */

@@ -293,6 +293,7 @@ gst_mpegv_negotiate_codec_meta (GstMpegvParse * mpvparse)
 {
   GstCaps *caps = NULL;
   GstCapsFeatures *feature = NULL, *feature_meta;
+  GstQuery *query;
 
   caps = gst_pad_get_allowed_caps (GST_BASE_PARSE_SRC_PAD (mpvparse));
   GST_DEBUG_OBJECT (mpvparse, "allowed caps: %" GST_PTR_FORMAT, caps);
@@ -314,6 +315,29 @@ gst_mpegv_negotiate_codec_meta (GstMpegvParse * mpvparse)
     gst_caps_features_free (feature_meta);
     gst_caps_unref (caps);
   }
+
+  /* Initiate an allocation query for allowing downstream to request
+   * individual header parsing since we are not gurananteed to have
+   * an allocation query from upstream always */
+  query = gst_query_new_allocation (NULL, FALSE);
+  if (!gst_pad_peer_query (GST_BASE_PARSE_SRC_PAD (mpvparse), query)) {
+    GST_DEBUG_OBJECT (mpvparse, "didn't get downstream ALLOCATION hints");
+  } else {
+    const GstStructure *params = NULL;
+    gboolean has_mpeg_meta_support, send_slice_meta;
+    guint index;
+    has_mpeg_meta_support =
+        gst_query_find_allocation_meta (query, GST_MPEG_VIDEO_META_API_TYPE,
+        &index);
+    if (has_mpeg_meta_support) {
+      gst_query_parse_nth_allocation_meta (query, index, &params);
+      if (params && gst_structure_has_name (params, "Gst.Meta.MpegVideo")
+          && gst_structure_get_boolean (params, "need-slice-header",
+              &send_slice_meta))
+        mpvparse->send_slice_meta = send_slice_meta;
+    }
+  }
+  gst_query_unref (query);
 }
 
 static gboolean
@@ -327,7 +351,8 @@ gst_mpegv_parse_start (GstBaseParse * parse)
   /* at least this much for a valid frame */
   gst_base_parse_set_min_frame_size (parse, 6);
 
-  /* negotiate the requirement of GstMpegVideoMeta */
+  /* negotiate the requirement of GstMpegVideoMeta and
+   * individual header parsing request from downstream */
   gst_mpegv_negotiate_codec_meta (mpvparse);
 
   return TRUE;

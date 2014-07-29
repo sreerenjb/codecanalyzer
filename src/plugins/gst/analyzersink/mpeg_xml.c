@@ -391,8 +391,8 @@ error:
 }
 
 gboolean
-analyzer_create_mpeg2video_frame_xml (GstMpegVideoMeta * mpeg_meta,
-    gchar * location, gint frame_num, Mpeg2Headers * mpeg2_hdrs)
+analyzer_create_mpeg2video_frame_xml (GstMeta * meta,
+    gchar * location, gint frame_num, CodecGeneralHeaders * headers)
 {
   xmlTextWriterPtr writer;
   xmlDocPtr doc;
@@ -401,13 +401,18 @@ analyzer_create_mpeg2video_frame_xml (GstMpegVideoMeta * mpeg_meta,
   gchar *file_name;
   gchar *name;
   int fd, i;
+  GstMpegVideoMeta *mpeg_meta;
+  Mpeg2Headers *mpeg2_hdrs;
   GstMpegVideoSequenceHdr *sequencehdr = NULL;
   GstMpegVideoSequenceExt *sequenceext = NULL;
   GstMpegVideoSequenceDisplayExt *sequencedispext = NULL;
   GstMpegVideoQuantMatrixExt *quantext = NULL;
 
-  if (!mpeg_meta)
+  if (!meta || !headers)
     return FALSE;
+
+  mpeg_meta = (GstMpegVideoMeta *) meta;
+  mpeg2_hdrs = (Mpeg2Headers *) & headers->mpeg2_headers;
 
   xmlKeepBlanksDefault (0);
 

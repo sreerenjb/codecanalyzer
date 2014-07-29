@@ -2,7 +2,9 @@ noinst_LTLIBRARIES =                            \
         libcodecanalyzer-gst-analyzersink.la               \
         $(NULL)
 
-noinst_HEADERS = gstanalyzersink.h mpeg_xml.h xml_utils.h analyzer_utils.h
+noinst_HEADERS = gstanalyzersink.h codec_utils.h mpeg_xml.h xml_utils.h \
+                 analyzer_utils.h \
+                 $(NULL)
 
 libcodecanalyzer_gst_analyzersink_cflags =                          \
         -DGST_USE_UNSTABLE_API                           \
@@ -26,6 +28,7 @@ libcodecanalyzer_gst_analyzersink_libs =                   \
 
 libcodecanalyzer_gst_analyzersink_la_SOURCES =  \
         gstanalyzersink.c            \
+        codec_utils.c                \
         mpeg_xml.c                   \
         plugin.c                     \
 	analyzer_utils.c	     \

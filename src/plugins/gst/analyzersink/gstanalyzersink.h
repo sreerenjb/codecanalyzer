@@ -41,17 +41,6 @@ G_BEGIN_DECLS
   (G_TYPE_CHECK_CLASS_TYPE((klass),GST_TYPE_ANALYZER_SINK))
 #define GST_ANALYZER_SINK_CAST(obj) ((GstAnalyzerSink *)obj)
 
-typedef enum {
-  GST_ANALYZER_CODEC_UNKNOWN = 0,
-  GST_ANALYZER_CODEC_MPEG2_VIDEO = 1,
-  GST_ANALYZER_CODEC_H264 = 2,
-  GST_ANALYZER_CODEC_VC1 = 3,
-  GST_ANALYZER_CODEC_MPEG4_PART_TWO = 4,
-  GST_ANALYZER_CODEC_H265 = 5,
-  GST_ANALYZER_CODEC_VP8 = 6,
-  GST_ANALYZER_CODEC_VP9 = 7
-} GstAnalyzerCodecType;
-
 typedef struct _GstAnalyzerSink GstAnalyzerSink;
 typedef struct _GstAnalyzerSinkClass GstAnalyzerSinkClass;
 
@@ -69,10 +58,8 @@ struct _GstAnalyzerSink {
   gint			frame_num;
   gchar*		location;
 
-  GstAnalyzerCodecType  codec_type;
-
-  /* codec specific headers */
-  Mpeg2Headers *mpeg2_hdrs;
+  /* codec specific headers and other necessary details */
+  CodecInfo *codec_info;
 };
 
 struct _GstAnalyzerSinkClass {

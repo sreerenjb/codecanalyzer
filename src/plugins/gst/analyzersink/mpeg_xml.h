@@ -25,19 +25,13 @@
 #include <libxml/tree.h>
 #include <libxml/encoding.h>
 #include <libxml/xmlwriter.h>
-
-typedef struct {
-  GstMpegVideoSequenceHdr        *sequencehdr;
-  GstMpegVideoSequenceExt        *sequenceext;
-  GstMpegVideoSequenceDisplayExt *sequencedispext;
-  GstMpegVideoQuantMatrixExt     *quantext;
-}Mpeg2Headers;
+#include "codec_utils.h"
 
 gboolean
-analyzer_create_mpeg2video_frame_xml (GstMpegVideoMeta *mpeg_meta,
+analyzer_create_mpeg2video_frame_xml (GstMeta *meta,
                                       gchar *location,
 				      gint frame_num,
-				      Mpeg2Headers *mpeg2_hdrs);
+				      CodecGeneralHeaders *headers);
 
 gboolean
 analyzer_create_mpeg2video_frame_hex (GstMpegVideoMeta *mpeg_meta,

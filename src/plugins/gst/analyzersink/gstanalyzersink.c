@@ -147,11 +147,9 @@ gst_analyzer_sink_init (GstAnalyzerSink * analyzersink)
 {
   analyzersink->dump = DEFAULT_DUMP;
   analyzersink->num_buffers = DEFAULT_NUM_BUFFERS;
-  analyzersink->codec_type = GST_ANALYZER_CODEC_UNKNOWN;
   analyzersink->frame_num = 0;
   analyzersink->location = NULL;
-  /* XXX: Add a generic structure to handle different codecs */
-  analyzersink->mpeg2_hdrs = g_slice_new0 (Mpeg2Headers);
+  analyzersink->codec_info = NULL;
   gst_base_sink_set_sync (GST_BASE_SINK (analyzersink), DEFAULT_SYNC);
 }
 
@@ -163,18 +161,8 @@ gst_analyzer_sink_finalize (GObject * obj)
   if (sink->location)
     g_free (sink->location);
 
-  if (sink->mpeg2_hdrs) {
-    if (sink->mpeg2_hdrs->sequencehdr)
-      g_slice_free (GstMpegVideoSequenceHdr, sink->mpeg2_hdrs->sequencehdr);
-    if (sink->mpeg2_hdrs->sequenceext)
-      g_slice_free (GstMpegVideoSequenceExt, sink->mpeg2_hdrs->sequenceext);
-    if (sink->mpeg2_hdrs->sequencedispext)
-      g_slice_free (GstMpegVideoSequenceDisplayExt,
-          sink->mpeg2_hdrs->sequencedispext);
-    if (sink->mpeg2_hdrs->quantext)
-      g_slice_free (GstMpegVideoQuantMatrixExt, sink->mpeg2_hdrs->quantext);
-    g_slice_free (Mpeg2Headers, sink->mpeg2_hdrs);
-  }
+  if (sink->codec_info)
+    gst_destroy_codec_info (sink->codec_info);
 
   G_OBJECT_CLASS (parent_class)->finalize (obj);
 }
@@ -188,12 +176,14 @@ gst_analyzer_sink_set_caps (GstBaseSink * bsink, GstCaps * caps)
   if (!caps)
     return FALSE;
 
+  if (sink->codec_info)
+    return TRUE;
+
   structure = gst_caps_get_structure (caps, 0);
   const gchar *name = gst_structure_get_name (structure);
 
-  if (!strcmp (name, "video/mpeg"))
-    sink->codec_type = GST_ANALYZER_CODEC_MPEG2_VIDEO;
-  else
+  sink->codec_info = gst_codec_info_new_from_mime_type (name);
+  if (!sink->codec_info || (sink->codec_info->type != CODEC_UNKNOWN))
     return FALSE;
 
   return TRUE;
@@ -271,11 +261,10 @@ gst_analyzer_sink_dump_mem (GstAnalyzerSink * sink, const guchar * mem,
 
   GST_DEBUG ("dump frame content with size = %d", size);
 
-  /* XXX: Add a generic structure to handle different codec name string
-   * For now analyzersink can only handle mpeg2meta:*/
-
   /* create a new hex file for each frame */
-  name = g_strdup_printf ("mpeg2-%d.hex", sink->frame_num);
+  name =
+      g_strdup_printf ("%s-%d.hex", sink->codec_info->codec_name,
+      sink->frame_num);
   file_name = g_build_filename (sink->location, "hex", name, NULL);
   GST_LOG ("Created a New hex file %s to dump the content", file_name);
   free (name);
@@ -310,8 +299,12 @@ static GstFlowReturn
 gst_analyzer_sink_render (GstBaseSink * bsink, GstBuffer * buf)
 {
   GstAnalyzerSink *sink = GST_ANALYZER_SINK_CAST (bsink);
-  GstMpegVideoMeta *mpeg_meta;
+  CodecInfo *codecinfo;
+  GType codecmeta_api;
+  GstMeta *codecmeta;
   gboolean ret;
+
+  codecinfo = sink->codec_info;
 
   if (sink->num_buffers_left == 0)
     goto eos;
@@ -327,36 +320,16 @@ gst_analyzer_sink_render (GstBaseSink * bsink, GstBuffer * buf)
     gst_buffer_unmap (buf, &info);
   }
 
-  switch (sink->codec_type) {
-    case GST_ANALYZER_CODEC_MPEG2_VIDEO:
-    {
-      mpeg_meta = gst_buffer_get_mpeg_video_meta (buf);
-      if (!mpeg_meta)
-        goto no_mpeg_meta;
+  codecmeta_api = codecinfo->get_codec_meta_api_type ();
+  codecmeta = codecinfo->get_codec_meta (buf, codecmeta_api);
+  if (!codecmeta)
+    goto no_codec_meta;
 
-      GST_DEBUG_OBJECT (sink,
-          "creatin mpeg2video_frame_xml for mpeg2frame with num=%d \n",
-          sink->frame_num);
-      if (!analyzer_create_mpeg2video_frame_xml (mpeg_meta, sink->location,
-              sink->frame_num, sink->mpeg2_hdrs))
-        goto error_create_xml;
-    }
-      break;
-
-    case GST_ANALYZER_CODEC_H264:
-    case GST_ANALYZER_CODEC_VC1:
-    case GST_ANALYZER_CODEC_MPEG4_PART_TWO:
-    case GST_ANALYZER_CODEC_H265:
-    {
-      GST_WARNING ("No codec support in analyzer sink");
-      goto unknown_codec;
-    }
-      break;
-
-    case GST_ANALYZER_CODEC_UNKNOWN:
-    default:
-      goto unknown_codec;
-  }
+  GST_DEBUG_OBJECT (sink, "creatin video_frame_xml for frame-%d \n",
+      sink->frame_num);
+  if (!codecinfo->create_xml (codecmeta, sink->location, sink->frame_num,
+          codecinfo->headers))
+    goto error_create_xml;
 
   g_signal_emit (sink, gst_analyzer_sink_signals[SIGNAL_NEW_FRAME], 0, buf,
       sink->frame_num);
@@ -368,14 +341,9 @@ gst_analyzer_sink_render (GstBaseSink * bsink, GstBuffer * buf)
   return GST_FLOW_OK;
 
   /* ERRORS */
-no_mpeg_meta:
+no_codec_meta:
   {
-    GST_DEBUG_OBJECT (sink, "no mpeg meta");
-    return GST_FLOW_EOS;
-  }
-unknown_codec:
-  {
-    GST_DEBUG_OBJECT (sink, "unknown codec");
+    GST_DEBUG_OBJECT (sink, "no codec meta");
     return GST_FLOW_EOS;
   }
 error_create_xml:
@@ -413,18 +381,48 @@ gst_analyzer_sink_query (GstBaseSink * bsink, GstQuery * query)
   return ret;
 }
 
+const gchar *
+get_mime_type (GstAnalyzerSink * sink)
+{
+  GstCaps *caps = NULL;
+  GstStructure *structure;
+  const gchar *name;
+
+  caps = gst_pad_get_allowed_caps (GST_BASE_SINK_PAD (sink));
+  if (caps) {
+    caps = gst_caps_truncate (caps);
+    structure = gst_caps_get_structure (caps, 0);
+    name = g_strdup (gst_structure_get_name (structure));
+    gst_caps_unref (caps);
+    return name;
+  }
+  return NULL;
+}
+
 static gboolean
 gst_analyzer_sink_propose_allocation (GstBaseSink * base_sink, GstQuery * query)
 {
   GstStructure *param;
+  const gchar *mime_type = NULL;
   GstAnalyzerSink *analyzersink = GST_ANALYZER_SINK (base_sink);
+  CodecInfo *info = analyzersink->codec_info;
 
-  /* Fixme: differentiate the codecs based on negotiated caps */
-  /* request mpeg2 slice header parsing from upstream */
+  if (!info) {
+    mime_type = get_mime_type (analyzersink);
+    if (!mime_type) {
+      GST_ERROR_OBJECT (analyzersink, "Failed to identify the mime type");
+      return FALSE;
+    }
+    info = gst_codec_info_new_from_mime_type (mime_type);
+    g_free ((gchar *) mime_type);
+    analyzersink->codec_info = info;
+  }
+
   param =
-      gst_structure_new ("Gst.Meta.MpegVideo", "need-slice-header",
+      gst_structure_new (info->query_param_name, "need-slice-header",
       G_TYPE_BOOLEAN, TRUE, NULL);
-  gst_query_add_allocation_meta (query, GST_MPEG_VIDEO_META_API_TYPE, param);
+  gst_query_add_allocation_meta (query, info->get_codec_meta_api_type (),
+      param);
   gst_structure_free (param);
 
   return TRUE;

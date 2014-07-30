@@ -33,7 +33,4 @@ analyzer_create_mpeg2video_frame_xml (GstMeta *meta,
 				      gint frame_num,
 				      CodecGeneralHeaders *headers);
 
-gboolean
-analyzer_create_mpeg2video_frame_hex (GstMpegVideoMeta *mpeg_meta,
-                                      gint frame_num, guint *data);
 #endif

@@ -412,7 +412,7 @@ analyzer_create_mpeg2video_frame_xml (GstMeta * meta,
     return FALSE;
 
   mpeg_meta = (GstMpegVideoMeta *) meta;
-  mpeg2_hdrs = (Mpeg2Headers *) & headers->mpeg2_headers;
+  mpeg2_hdrs = (Mpeg2Headers *) & (headers->mpeg2_headers);
 
   xmlKeepBlanksDefault (0);
 
@@ -566,12 +566,5 @@ analyzer_create_mpeg2video_frame_xml (GstMeta * meta,
   if (file_name)
     g_free (file_name);
 
-  return TRUE;
-}
-
-gboolean
-analyzer_create_mpeg2video_frame_hex (GstMpegVideoMeta * mpeg_meta,
-    gint frame_num, guint * data)
-{
   return TRUE;
 }

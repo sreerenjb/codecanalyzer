@@ -56,9 +56,9 @@ typedef gboolean (*CreateVideoFrameMetaXml)    (GstMeta *meta,
                                                 gint frame_num,
                                                 CodecGeneralHeaders *headers);
 typedef struct {
-  char *codec_name;
-  char *mime_type;
-  char *query_param_name;
+  const gchar *codec_name;
+  const gchar *mime_type;
+  const gchar *query_param_name;
   CodecType type;
 
   GetGstCodecMetaApiType get_codec_meta_api_type;

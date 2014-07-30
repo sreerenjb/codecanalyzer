@@ -75,7 +75,6 @@ static GstStateChangeReturn gst_analyzer_sink_change_state (GstElement *
 
 static GstFlowReturn gst_analyzer_sink_render (GstBaseSink * bsink,
     GstBuffer * buffer);
-static gboolean gst_analyzer_sink_event (GstBaseSink * bsink, GstEvent * event);
 static gboolean gst_analyzer_sink_query (GstBaseSink * bsink, GstQuery * query);
 static gboolean gst_analyzer_sink_propose_allocation (GstBaseSink * base_sink,
     GstQuery * query);
@@ -136,7 +135,6 @@ gst_analyzer_sink_class_init (GstAnalyzerSinkClass * klass)
   gstelement_class->change_state =
       GST_DEBUG_FUNCPTR (gst_analyzer_sink_change_state);
 
-  gstbase_sink_class->event = GST_DEBUG_FUNCPTR (gst_analyzer_sink_event);
   gstbase_sink_class->render = GST_DEBUG_FUNCPTR (gst_analyzer_sink_render);
   gstbase_sink_class->query = GST_DEBUG_FUNCPTR (gst_analyzer_sink_query);
   gstbase_sink_class->propose_allocation = gst_analyzer_sink_propose_allocation;
@@ -183,8 +181,10 @@ gst_analyzer_sink_set_caps (GstBaseSink * bsink, GstCaps * caps)
   const gchar *name = gst_structure_get_name (structure);
 
   sink->codec_info = gst_codec_info_new_from_mime_type (name);
-  if (!sink->codec_info || (sink->codec_info->type != CODEC_UNKNOWN))
+  if (!sink->codec_info || (sink->codec_info->type != CODEC_UNKNOWN)) {
+    GST_ERROR_OBJECT (sink, "Failed to handle the input codec");
     return FALSE;
+  }
 
   return TRUE;
 }
@@ -242,14 +242,6 @@ gst_analyzer_sink_get_property (GObject * object, guint prop_id, GValue * value,
 }
 
 static gboolean
-gst_analyzer_sink_event (GstBaseSink * bsink, GstEvent * event)
-{
-  GstAnalyzerSink *sink = GST_ANALYZER_SINK (bsink);
-
-  return GST_BASE_SINK_CLASS (parent_class)->event (bsink, event);
-}
-
-static gboolean
 gst_analyzer_sink_dump_mem (GstAnalyzerSink * sink, const guchar * mem,
     guint size)
 {
@@ -299,9 +291,9 @@ static GstFlowReturn
 gst_analyzer_sink_render (GstBaseSink * bsink, GstBuffer * buf)
 {
   GstAnalyzerSink *sink = GST_ANALYZER_SINK_CAST (bsink);
-  CodecInfo *codecinfo;
+  CodecInfo *codecinfo = NULL;
   GType codecmeta_api;
-  GstMeta *codecmeta;
+  GstMeta *codecmeta = NULL;
   gboolean ret;
 
   codecinfo = sink->codec_info;
@@ -413,7 +405,13 @@ gst_analyzer_sink_propose_allocation (GstBaseSink * base_sink, GstQuery * query)
       GST_ERROR_OBJECT (analyzersink, "Failed to identify the mime type");
       return FALSE;
     }
+
     info = gst_codec_info_new_from_mime_type (mime_type);
+    if (!info) {
+      GST_ERROR_OBJECT (analyzersink, "Failed to create the CodecInfo");
+      return FALSE;
+    }
+
     g_free ((gchar *) mime_type);
     analyzersink->codec_info = info;
   }

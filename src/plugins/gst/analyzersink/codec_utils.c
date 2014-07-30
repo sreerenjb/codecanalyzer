@@ -60,13 +60,12 @@ gst_codec_info_new_from_mime_type (const char *mime_type)
 {
   CodecInfo *info = NULL;
 
-  if (mime_type == NULL)
-    return;
+  g_return_val_if_fail (mime_type != NULL, NULL);
 
   info = get_analyzer_codec_info_from_mime_type (mime_type);
   if (!info || info->type == CODEC_UNKNOWN) {
     GST_ERROR ("Unknown codec name");
-    return FALSE;
+    return NULL;
   }
 
   if (!info->headers)

@@ -181,7 +181,7 @@ gst_analyzer_sink_set_caps (GstBaseSink * bsink, GstCaps * caps)
   const gchar *name = gst_structure_get_name (structure);
 
   sink->codec_info = gst_codec_info_new_from_mime_type (name);
-  if (!sink->codec_info || (sink->codec_info->type != CODEC_UNKNOWN)) {
+  if (!sink->codec_info || (sink->codec_info->type == CODEC_UNKNOWN)) {
     GST_ERROR_OBJECT (sink, "Failed to handle the input codec");
     return FALSE;
   }

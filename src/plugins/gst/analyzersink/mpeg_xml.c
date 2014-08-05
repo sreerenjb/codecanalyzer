@@ -44,16 +44,12 @@ create_seq_hdr_xml (xmlTextWriterPtr writer, GstMpegVideoSequenceHdr * seq_hdr)
       seq_hdr->vbv_buffer_size_value, "nbits", 10);
   ANALYZER_XML_ELEMENT_CREATE_INT (writer, "constrained_parameters_flag",
       seq_hdr->constrained_parameters_flag, "nbits", 1);
-#if 0
   ANALYZER_XML_ELEMENT_CREATE_INT (writer, "load_intra_quantiser_matrix",
       seq_hdr->load_intra_quantiser_matrix, "nbits", 1);
-#endif
   ANALYZER_XML_ELEMENT_CREATE_MATRIX (writer, "intra_quantiser_matrix",
       seq_hdr->intra_quantizer_matrix, 8, 8);
-#if 0
   ANALYZER_XML_ELEMENT_CREATE_INT (writer, "load_non_intra_quantiser_matrix",
       seq_hdr->load_non_intra_quantiser_matrix, "nbits", 1);
-#endif
   ANALYZER_XML_ELEMENT_CREATE_MATRIX (writer, "non_intra_quantizer_matrix",
       seq_hdr->non_intra_quantizer_matrix, 8, 8);
   ANALYZER_XML_ELEMENT_CREATE_INT (writer, "bit_rate_calculated",
@@ -198,10 +194,8 @@ create_pic_hdr_xml (xmlTextWriterPtr writer, GstMpegVideoPictureHdr * pic_hdr)
       "nbits", 10);
   ANALYZER_XML_ELEMENT_CREATE_INT (writer, "picture_coding_type",
       pic_hdr->pic_type, "nbits", 3);
-#if 0
   ANALYZER_XML_ELEMENT_CREATE_INT (writer, "vbv_delay", pic_hdr->vbv_delay,
       "nbits", 16);
-#endif
   ANALYZER_XML_ELEMENT_CREATE_INT (writer, "full_pel_forward_vector",
       pic_hdr->full_pel_forward_vector, "nbits", 1);
   ANALYZER_XML_ELEMENT_CREATE_INT (writer, "forward_f_code",
@@ -334,19 +328,16 @@ create_slice_hdr_xml (xmlTextWriterPtr writer,
   sprintf (header_name, "slice_%d", slice_num);
 
   ANALYZER_XML_ELEMENT_START (writer, header_name);
-#if 0
-  ANALYZER_XML_ELEMENT_CREATE_INT (writer, "slice_hdr_identifier",
-      slice_info->slice_hdr.slice_id, "nbits", 8);
+  ANALYZER_XML_ELEMENT_CREATE_INT (writer, "slice_vertical_position",
+      slice_info->slice_hdr.vertical_position, "nbits", 8);
   if (slice_info->slice_hdr.vertical_position_ext) {
     ANALYZER_XML_ELEMENT_CREATE_INT (writer, "vertical_position_ext",
         slice_info->slice_hdr.vertical_position_ext, "nbits", 3);
   }
-#endif
   ANALYZER_XML_ELEMENT_CREATE_INT (writer, "priority_breakpoint",
       slice_info->slice_hdr.priority_breakpoint, "nbits", 7);
   ANALYZER_XML_ELEMENT_CREATE_INT (writer, "quantiser_scale_code",
       slice_info->slice_hdr.quantiser_scale_code, "nbits", 5);
-#if 0
   ANALYZER_XML_ELEMENT_CREATE_INT (writer, "slice_ext_flag",
       slice_info->slice_hdr.slice_ext_flag, "nbits", 1);
 
@@ -354,18 +345,13 @@ create_slice_hdr_xml (xmlTextWriterPtr writer,
     ANALYZER_XML_ELEMENT_CREATE_INT (writer, "intra_slice",
         slice_info->slice_hdr.intra_slice, "nbits", 1);
   } else {
-#endif
     ANALYZER_XML_ELEMENT_CREATE_INT (writer, "intra_slice",
         slice_info->slice_hdr.intra_slice, "nbits", 1);
-#if 0
     ANALYZER_XML_ELEMENT_CREATE_INT (writer, "slice_picture_id_enable",
         slice_info->slice_hdr.slice_picture_id_enable, "nbits", 1);
-#endif
     ANALYZER_XML_ELEMENT_CREATE_INT (writer, "slice_picture_id",
         slice_info->slice_hdr.slice_picture_id, "nbits", 6);
-#if 0
   }
-#endif
   ANALYZER_XML_ELEMENT_CREATE_INT (writer, "header_size_calculated",
       slice_info->slice_hdr.header_size, "nbits", 0);
   ANALYZER_XML_ELEMENT_CREATE_INT (writer, "mb_row_calculated",

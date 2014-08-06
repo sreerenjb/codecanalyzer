@@ -82,8 +82,6 @@ static GstCaps *gst_mpegv_parse_get_caps (GstBaseParse * parse,
     GstCaps * filter);
 static GstFlowReturn gst_mpegv_parse_pre_push_frame (GstBaseParse * parse,
     GstBaseParseFrame * frame);
-static gboolean gst_mpegv_parse_sink_query (GstBaseParse * parse,
-    GstQuery * query);
 
 static void gst_mpegv_parse_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec);
@@ -173,7 +171,6 @@ gst_mpegv_parse_class_init (GstMpegvParseClass * klass)
   parse_class->get_sink_caps = GST_DEBUG_FUNCPTR (gst_mpegv_parse_get_caps);
   parse_class->pre_push_frame =
       GST_DEBUG_FUNCPTR (gst_mpegv_parse_pre_push_frame);
-  parse_class->sink_query = GST_DEBUG_FUNCPTR (gst_mpegv_parse_sink_query);
 }
 
 static void
@@ -251,41 +248,6 @@ gst_mpegv_parse_reset (GstMpegvParse * mpvparse)
   mpvparse->seqdispext_updated = FALSE;
   mpvparse->picext_updated = FALSE;
   mpvparse->quantmatrext_updated = FALSE;
-}
-
-static gboolean
-gst_mpegv_parse_sink_query (GstBaseParse * parse, GstQuery * query)
-{
-  gboolean res;
-  GstMpegvParse *mpvparse = GST_MPEGVIDEO_PARSE (parse);
-
-  res = GST_BASE_PARSE_CLASS (parent_class)->sink_query (parse, query);
-
-  if (res && GST_QUERY_TYPE (query) == GST_QUERY_ALLOCATION) {
-    guint index;
-
-    mpvparse->send_mpeg_meta =
-        gst_query_find_allocation_meta (query, GST_MPEG_VIDEO_META_API_TYPE,
-        &index);
-    if (mpvparse->send_mpeg_meta) {
-      const GstStructure *params = NULL;
-      gboolean send_slice_meta;
-
-      gst_query_parse_nth_allocation_meta (query, index, &params);
-      if (params && gst_structure_has_name (params, "Gst.Meta.MpegVideo")
-          && gst_structure_get_boolean (params, "need-slice-header",
-              &send_slice_meta))
-        mpvparse->send_slice_meta = send_slice_meta;
-
-      GST_DEBUG_OBJECT (parse,
-          "Downstream can handle GstMpegVideoMetaSliceInfo : %d",
-          mpvparse->send_slice_meta);
-    }
-    GST_DEBUG_OBJECT (parse, "Downstream can handle GstMpegVideo GstMeta : %d",
-        mpvparse->send_mpeg_meta);
-  }
-
-  return res;
 }
 
 static void

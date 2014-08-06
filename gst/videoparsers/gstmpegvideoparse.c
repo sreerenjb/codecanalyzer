@@ -275,13 +275,12 @@ gst_mpegv_negotiate_codec_meta (GstMpegvParse * mpvparse)
           mpvparse->send_mpeg_meta);
     }
     gst_caps_features_free (feature_meta);
-    gst_caps_unref (caps);
   }
 
   /* Initiate an allocation query for allowing downstream to request
    * individual header parsing since we are not gurananteed to have
    * an allocation query from upstream always */
-  query = gst_query_new_allocation (NULL, FALSE);
+  query = gst_query_new_allocation (caps, FALSE);
   if (!gst_pad_peer_query (GST_BASE_PARSE_SRC_PAD (mpvparse), query)) {
     GST_DEBUG_OBJECT (mpvparse, "allocation query failed, no peer pad !");
   } else {
@@ -300,6 +299,8 @@ gst_mpegv_negotiate_codec_meta (GstMpegvParse * mpvparse)
     }
     mpvparse->codecmeta_negotiated = TRUE;
   }
+  if (caps)
+    gst_caps_unref (caps);
   gst_query_unref (query);
 }
 

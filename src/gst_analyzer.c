@@ -44,6 +44,7 @@ static GstAnalyzerStatusInfo analyzer_status_info[] = {
   {GST_ANALYZER_STATUS_CODEC_PARSER_MISSING, "Codec Parser is missing"},
   {GST_ANALYZER_STATUS_CODEC_NOT_SUPPORTED, "Codec not supported"},
   {GST_ANALYZER_STATUS_STREAM_FORMAT_UNKNOWN, "Unknown stream format"},
+  {GST_ANALYZER_STATUS_LINK_ERROR, "Failed to Link the elements"},
   {GST_ANALYZER_STATUS_ERROR_UNKNOWN, "Failed to start the gstreamer engine"}
 };
 
@@ -162,6 +163,189 @@ gst_analyzer_video_info_new ()
   return vinfo;
 }
 
+typedef enum
+{
+  GST_AUTOPLUG_SELECT_TRY,
+  GST_AUTOPLUG_SELECT_EXPOSE,
+  GST_AUTOPLUG_SELECT_SKIP
+} GstAutoplugSelectResult;
+
+static GstAutoplugSelectResult
+autoplug_select_callback (GstElement * element, GstPad * pad, GstCaps * caps,
+    GstElementFactory * factory, GstAnalyzer * analyzer)
+{
+  /* Don't autoplug any audio elements */
+  if (gst_element_factory_list_is_type (factory,
+          GST_ELEMENT_FACTORY_TYPE_PARSER |
+          GST_ELEMENT_FACTORY_TYPE_DECODER |
+          GST_ELEMENT_FACTORY_TYPE_MEDIA_AUDIO))
+    return GST_AUTOPLUG_SELECT_SKIP;
+
+  /* Don't autoplug subtitle and metadata elements */
+  if (gst_element_factory_list_is_type (factory,
+          GST_ELEMENT_FACTORY_TYPE_MEDIA_SUBTITLE |
+          GST_ELEMENT_FACTORY_TYPE_MEDIA_METADATA))
+    return GST_AUTOPLUG_SELECT_SKIP;
+
+  /* Don't autoplug image and video decoders */
+  if (gst_element_factory_list_is_type (factory,
+          GST_ELEMENT_FACTORY_TYPE_DECODER |
+          GST_ELEMENT_FACTORY_TYPE_MEDIA_VIDEO |
+          GST_ELEMENT_FACTORY_TYPE_MEDIA_IMAGE))
+    return GST_AUTOPLUG_SELECT_SKIP;
+
+  /* try the video parser if it is compatible with the analyzersink */
+  if (gst_element_factory_list_is_type (factory,
+          GST_ELEMENT_FACTORY_TYPE_PARSER |
+          GST_ELEMENT_FACTORY_TYPE_MEDIA_VIDEO)) {
+    GstElement *parser = NULL;
+    GstPad *parsersrcpad = NULL, *sinkpad = NULL;
+    GstCaps *parsersrccaps = NULL, *sinkcaps = NULL;
+    GstAutoplugSelectResult result = GST_AUTOPLUG_SELECT_SKIP;
+
+    parser = gst_element_factory_create (factory, NULL);
+    if (parser && (parsersrcpad = gst_element_get_static_pad (parser, "src")))
+      parsersrccaps = gst_pad_query_caps (parsersrcpad, NULL);
+
+    if (sinkpad = gst_element_get_static_pad (analyzer->sink, "sink"))
+      sinkcaps = gst_pad_query_caps (sinkpad, NULL);
+
+    if (parsersrccaps && sinkcaps && !gst_caps_is_any (parsersrccaps)
+        && gst_caps_can_intersect (sinkcaps, parsersrccaps))
+      result = GST_AUTOPLUG_SELECT_TRY;
+
+    if (parsersrcpad)
+      gst_object_unref (parsersrcpad);
+    if (parsersrccaps)
+      gst_caps_unref (parsersrccaps);
+    if (sinkpad)
+      gst_object_unref (sinkpad);
+    if (sinkcaps)
+      gst_caps_unref (sinkcaps);
+    if (parser)
+      gst_object_unref (parser);
+
+    return result;
+  }
+
+  /* Try to autoplug anything else */
+  return GST_AUTOPLUG_SELECT_TRY;
+}
+
+static gboolean
+autoplug_continue_callback (GstElement * element, GstPad * pad, GstCaps * caps,
+    GstAnalyzer * analyzer)
+{
+  gboolean ret = TRUE;
+  GstPad *sinkpad = NULL;
+  GstCaps *sinkcaps = NULL;
+
+  if (!gst_caps_is_any (caps)) {
+    sinkpad = gst_element_get_static_pad (analyzer->sink, "sink");
+    sinkcaps = gst_pad_query_caps (sinkpad, NULL);
+
+    if (sinkcaps && gst_caps_can_intersect (sinkcaps, caps)) {
+      g_debug ("got the necessary parser, stop autoplugging");
+      return FALSE;
+    }
+
+    if (sinkcaps)
+      gst_caps_unref (sinkcaps);
+    gst_object_unref (sinkpad);
+  }
+
+  return TRUE;
+}
+
+static gboolean
+autoplug_query_callback (GstElement * element, GstPad * pad, GstElement * child,
+    GstQuery * query, GstAnalyzer * analyzer)
+{
+  GstCaps *filter, *outcaps = NULL, *sinkcaps;
+  GstPad *sinkpad;
+  GstElementFactory *factory;
+
+  if (GST_QUERY_TYPE (query) != GST_QUERY_CAPS)
+    return FALSE;
+
+  gst_query_parse_caps (query, &filter);
+  factory = gst_element_get_factory (child);
+  if (!factory)
+    goto done;
+
+  if (gst_element_factory_list_is_type (factory,
+          GST_ELEMENT_FACTORY_TYPE_PARSER |
+          GST_ELEMENT_FACTORY_TYPE_MEDIA_VIDEO)) {
+
+    sinkpad = gst_element_get_static_pad (analyzer->sink, "sink");
+    if (sinkpad) {
+      sinkcaps = gst_pad_query_caps (sinkpad, filter);
+      if (!gst_caps_is_any (sinkcaps))
+        outcaps = sinkcaps;
+      else
+        gst_caps_unref (sinkcaps);
+      gst_object_unref (sinkpad);
+    }
+  } else {
+    goto done;
+  }
+
+done:
+  if (!outcaps)
+    return FALSE;
+
+  /* taken from gstplaybin.c */
+  /* Add the actual decoder/parser/etc caps at the very end to
+   * make sure we don't cause empty caps to be returned, e.g.
+   * if a parser asks us but a decoder is required after it
+   * because no sink can handle the format directly.
+   */
+  {
+    GstPad *target = gst_ghost_pad_get_target (GST_GHOST_PAD (pad));
+
+    if (target) {
+      GstCaps *target_caps = gst_pad_get_pad_template_caps (target);
+      outcaps = gst_caps_merge (outcaps, target_caps);
+      gst_object_unref (target);
+    }
+  }
+
+  gst_query_set_caps_result (query, outcaps);
+  gst_caps_unref (outcaps);
+
+  return TRUE;
+}
+
+static void
+element_added_callback (GstBin * bin, GstElement * element,
+    GstAnalyzer * analyzer)
+{
+  GstElementFactory *const factory = gst_element_get_factory (element);
+
+  /* set videoparser specific properites */
+  if (gst_element_factory_list_is_type (factory,
+          GST_ELEMENT_FACTORY_TYPE_PARSER |
+          GST_ELEMENT_FACTORY_TYPE_MEDIA_VIDEO)) {
+
+    if (analyzer->codec_type == GST_ANALYZER_CODEC_MPEG2_VIDEO) {
+      g_object_set (G_OBJECT (element), "drop", FALSE, NULL);
+      g_debug ("set drop property of mpegvideoparser to FALSE");
+    }
+  }
+}
+
+static void
+pad_added_callback (GstElement * element, GstPad * pad, GstElement * sink)
+{
+  GstPad *sinkpad;
+  GstCaps *caps = NULL, *srccaps = NULL;
+  guint ret = 0;
+
+  sinkpad = gst_element_get_static_pad (sink, "sink");
+  ret = gst_pad_link (pad, sinkpad);
+  gst_object_unref (sinkpad);
+}
+
 static void
 new_frame_callback (GstElement * element, GstBuffer * buffer, gint frame_num,
     gpointer data)
@@ -253,6 +437,7 @@ gst_analyzer_init (GstAnalyzer * analyzer, char *uri)
   GstAnalyzerStatus status = GST_ANALYZER_STATUS_ERROR_UNKNOWN;
   const CodecInfo *codec_info;
   GstBus *bus;
+  GstCaps *caps;
   gboolean ret;
 
   analyzer->NumOfAnalyzedFrames = 0;
@@ -282,6 +467,8 @@ gst_analyzer_init (GstAnalyzer * analyzer, char *uri)
   }
 
   if (ret && codec_info) {
+    analyzer->codec_type = codec_info->codec_type;
+
     switch (codec_info->codec_type) {
       case GST_ANALYZER_CODEC_MPEG2_VIDEO:
         status = GST_ANALYZER_STATUS_SUCCESS;
@@ -295,13 +482,12 @@ gst_analyzer_init (GstAnalyzer * analyzer, char *uri)
   analyzer->codec_name = g_strdup (codec_info->codec_short_name);
 
   analyzer->src = gst_element_factory_make ("filesrc", "file-src");
-  analyzer->parser =
-      gst_element_factory_make (codec_info->parser_name,
-      "codec-analyzer-video-parse");
+  analyzer->decbin = gst_element_factory_make ("decodebin", "dec-bin");
   analyzer->sink = gst_element_factory_make ("analyzersink", "sink");
   analyzer->pipeline = gst_pipeline_new ("pipeline");
 
-  if (!analyzer->src || !analyzer->parser || !analyzer->sink) {
+  if (!analyzer->src || !analyzer->decbin || !analyzer->sink
+      || !analyzer->pipeline) {
     g_error ("Failed to create the necessary gstreamer elements..");
     status = GST_ANALYZER_STATUS_ERROR_UNKNOWN;
     goto error;
@@ -309,12 +495,25 @@ gst_analyzer_init (GstAnalyzer * analyzer, char *uri)
 
   g_signal_connect (analyzer->sink, "new-frame", (GCallback) new_frame_callback,
       analyzer);
-  if (!strcmp (analyzer->codec_name, "mpeg2"))
-    g_object_set (G_OBJECT (analyzer->parser), "drop", FALSE, NULL);
 
   gst_bin_add_many (GST_BIN (analyzer->pipeline), analyzer->src,
-      analyzer->parser, analyzer->sink, NULL);
-  gst_element_link_many (analyzer->src, analyzer->parser, analyzer->sink, NULL);
+      analyzer->decbin, analyzer->sink, NULL);
+
+  if (!gst_element_link_many (analyzer->src, analyzer->decbin, NULL)) {
+    status = GST_ANALYZER_STATUS_LINK_ERROR;
+    goto error;
+  }
+
+  g_signal_connect (analyzer->decbin, "autoplug-select",
+      G_CALLBACK (autoplug_select_callback), analyzer);
+  g_signal_connect (analyzer->decbin, "element-added",
+      G_CALLBACK (element_added_callback), analyzer);
+  g_signal_connect (analyzer->decbin, "autoplug-query",
+      G_CALLBACK (autoplug_query_callback), analyzer);
+  g_signal_connect (analyzer->decbin, "autoplug-continue",
+      G_CALLBACK (autoplug_continue_callback), analyzer);
+  g_signal_connect (analyzer->decbin, "pad-added",
+      G_CALLBACK (pad_added_callback), analyzer->sink);
 
   bus = gst_pipeline_get_bus (GST_PIPELINE (analyzer->pipeline));
   analyzer->bus_watch_id = gst_bus_add_watch (bus, bus_callback, analyzer);

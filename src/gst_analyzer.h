@@ -34,7 +34,8 @@ typedef enum {
   GST_ANALYZER_STATUS_CODEC_PARSER_MISSING = 1,
   GST_ANALYZER_STATUS_CODEC_NOT_SUPPORTED = 2,
   GST_ANALYZER_STATUS_STREAM_FORMAT_UNKNOWN = 3,
-  GST_ANALYZER_STATUS_ERROR_UNKNOWN = 4
+  GST_ANALYZER_STATUS_LINK_ERROR = 4,
+  GST_ANALYZER_STATUS_ERROR_UNKNOWN = 5
 } GstAnalyzerStatus;
 
 const gchar* gst_analyzer_status_get_name       (GstAnalyzerStatus status);
@@ -69,10 +70,11 @@ struct _GstAnalyzer
   GstAnalyzerVideoInfo *video_info;
 
   gchar *codec_name;
+  GstAnalyzerCodecType codec_type;
 
   GstElement *pipeline;
   GstElement *src;
-  GstElement *parser;
+  GstElement *decbin;
   GstElement *sink;
 
   guint bus_watch_id;

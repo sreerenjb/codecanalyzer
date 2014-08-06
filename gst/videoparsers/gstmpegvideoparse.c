@@ -321,7 +321,7 @@ gst_mpegv_negotiate_codec_meta (GstMpegvParse * mpvparse)
    * an allocation query from upstream always */
   query = gst_query_new_allocation (NULL, FALSE);
   if (!gst_pad_peer_query (GST_BASE_PARSE_SRC_PAD (mpvparse), query)) {
-    GST_DEBUG_OBJECT (mpvparse, "didn't get downstream ALLOCATION hints");
+    GST_DEBUG_OBJECT (mpvparse, "allocation query failed, no peer pad !");
   } else {
     const GstStructure *params = NULL;
     gboolean has_mpeg_meta_support, send_slice_meta;
@@ -336,6 +336,7 @@ gst_mpegv_negotiate_codec_meta (GstMpegvParse * mpvparse)
               &send_slice_meta))
         mpvparse->send_slice_meta = send_slice_meta;
     }
+    mpvparse->codecmeta_negotiated = TRUE;
   }
   gst_query_unref (query);
 }
@@ -350,10 +351,6 @@ gst_mpegv_parse_start (GstBaseParse * parse)
   gst_mpegv_parse_reset (mpvparse);
   /* at least this much for a valid frame */
   gst_base_parse_set_min_frame_size (parse, 6);
-
-  /* negotiate the requirement of GstMpegVideoMeta and
-   * individual header parsing request from downstream */
-  gst_mpegv_negotiate_codec_meta (mpvparse);
 
   return TRUE;
 }
@@ -766,6 +763,11 @@ gst_mpegv_parse_handle_frame (GstBaseParse * parse,
   GstMapInfo map;
 
   update_frame_parsing_status (mpvparse, frame);
+
+  /* negotiate the requirement of GstMpegVideoMeta and
+   * individual header parsing request from downstream */
+  if (!mpvparse->codecmeta_negotiated)
+    gst_mpegv_negotiate_codec_meta (mpvparse);
 
   gst_buffer_map (buf, &map, GST_MAP_READ);
   data = map.data;

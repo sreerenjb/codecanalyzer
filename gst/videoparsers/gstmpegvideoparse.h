@@ -89,6 +89,7 @@ struct _GstMpegvParse {
   gboolean seqdispext_updated;
   gboolean picext_updated;
   gboolean quantmatrext_updated;
+  gboolean codecmeta_negotiated;
 
   /* properties */
   gboolean drop;
